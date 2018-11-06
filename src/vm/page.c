@@ -12,9 +12,10 @@ void page_init(void)
 	// sema_up(&page_sema);
 }
 
-void page_table_init(struct hash* h){
-
-	if(h == NULL) return
+void page_table_init(struct hash* h)
+{
+	ASSERT(h != NULL);
+	// if(h == NULL) return
 	sema_down(&page_sema);
   	hash_init(h, page_hash_hash_helper, page_hash_less_helper, NULL);
   	sema_up(&page_sema);
@@ -50,12 +51,14 @@ void page_table_init(struct hash* h){
 
 void page_map(uint32_t *upage, uint32_t *kpage, bool writable)
 {
-	if(upage == NULL || kpage == NULL) return;
+	ASSERT(upage != NULL && kpage != NULL);
+	
 	struct thread *t= thread_current();
 	
 	sema_down(&page_sema);
 	
 	PTE *new_pte = (PTE*)malloc(sizeof(PTE));
+	ASSERT(new_pte != NULL);
 	new_pte->paddr = kpage;
 	new_pte->uaddr = upage;
 	new_pte->dirty = false;
@@ -83,14 +86,27 @@ PTE* page_pte_lookup(uint32_t *addr)
 {
 	PTE pte;
 	struct hash_elem *helem;
-
 	pte.uaddr = addr;
 	helem = hash_find(&thread_current()->pt, &pte.helem);
 
 	return helem!=NULL ? hash_entry(helem, PTE, helem) : NULL;
 }
 
+void page_clear_all(struct hash *pt)
+{
+	ASSERT(pt!=NULL);
 
+	while(!hash_size(pt))
+	{
+		struct hash_iterator i;
+		hash_first(&i, pt);
+
+		page_remove_pte(hash_entry(i.elem, PTE, helem)->uaddr);
+	}
+
+	ASSERT(hash_size(pt) == 0);
+
+}
 
 unsigned page_hash_hash_helper(const struct hash_elem * element, void * aux)
 {

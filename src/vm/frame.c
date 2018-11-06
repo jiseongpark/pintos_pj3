@@ -32,6 +32,7 @@ uint8_t* frame_get_fte(uint32_t *upage, enum palloc_flags flag)
 bool frame_set_fte(uint32_t *upage, uint32_t *kpage)
 {
 	FTE* new_fte = (FTE*)malloc(sizeof(FTE));
+	ASSERT(new_fte != NULL);
 	new_fte->paddr = kpage;
 	new_fte->uaddr = upage;
 	// new_fte->is_swapped_out = false;
@@ -48,6 +49,7 @@ void frame_remove_fte(uint32_t* upage)
 	sema_down(&frame_sema);
 
 	FTE* fte = frame_fte_lookup(upage);
+	ASSERT(fte != NULL);
 	pagedir_clear_page(thread_current()->pagedir, upage);
 	palloc_free_page(fte->paddr);
 	hash_delete(&frame_table, &fte->helem);
@@ -59,6 +61,17 @@ void frame_remove_fte(uint32_t* upage)
 
 FTE* frame_fifo_fte(void)
 {
+	// printf("entered frame_fifo_fte\n");
+	// struct list_elem *e = list_begin(&fte_list);
+	// for(; e != list_end(&fte_list); e = list_next(e))
+	// {
+	// 	FTE *fte = list_entry(e, FTE, elem);
+	// 	printf("out uaddr = %p\n", fte->uaddr);
+	// 	if(fte->uaddr >= PHYS_BASE - STACK_MAX)
+	// 		return fte;
+	// }
+	// printf("frame_fifo_fte: FAILED\n");
+	// NOT_REACHED();
 	return list_entry(list_begin(&fte_list), FTE, elem);
 }
 

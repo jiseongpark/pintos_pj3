@@ -185,6 +185,8 @@ process_exit (void)
 
   pd = curr->pagedir;
 
+  // page_clear_all(curr->pt);
+
   if (pd != NULL) 
     {
       /* Correct ordering here is crucial.  We must set
@@ -324,10 +326,12 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   fn_copy = (char *)malloc(strlen(file_name) + 1);
+  ASSERT(fn_copy != NULL);
   strlcpy(fn_copy, file_name, strlen(file_name) + 1);
   real_file = strtok_r(fn_copy, " ", &save_ptr);
   strlcpy(thread_current()->name, real_file, 16);
   char * temp = (char*)malloc(sizeof(real_file) + 1);
+  ASSERT(temp != NULL);
   strlcpy(temp, real_file, sizeof(real_file) + 1);  
 
   
@@ -444,6 +448,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   
   if(success){
     thread_current()->exec = (char*)malloc(strlen(real_file)+1);
+    ASSERT(thread_current()->exec != NULL);
     strlcpy(thread_current()->exec,real_file, strlen(real_file)+1);
     process_num++;
    
@@ -539,21 +544,24 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
          and zero the final PAGE_ZERO_BYTES bytes. */
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
-
+      ASSERT(pagedir_get_page(thread_current()->pagedir, upage)==NULL);
       /* Get a page of memory. */
-
+      // printf("UPAGE: %p\n", upage);
       uint8_t *kpage = frame_get_fte(upage, PAL_USER|PAL_ZERO);
       // printf("KPAGE : %x\n", kpage);
 
       if(kpage == NULL)
       {
-        
+        // printf("tid(%d) in load_segment\n", thread_current()->tid);
         FTE *fte = frame_fifo_fte();
         // printf("UADDR : %x\n", fte->uaddr);
         swap_out(fte->uaddr);
+        // printf("SWAP_OUT\n");
 
         kpage = frame_get_fte(upage, PAL_USER | PAL_ZERO);
         // printf("KPAGE : %x\n", kpage);
+
+        ASSERT(kpage != NULL);
       }
 
       
@@ -600,12 +608,14 @@ setup_stack (void **esp, char *file_name)
   // printf("KPAGE : %x\n", kpage);
   if(kpage == NULL)
   {
-
+    // printf("in setup_stack\n");
     FTE *fte = frame_fifo_fte();
-    // printf("UADDR : %x\n", fte->uaddr);
+    printf("FUADDR : %x\n", fte->uaddr);
     swap_out(fte->uaddr);
+    // printf("SWAP_OUT\n");
     kpage = frame_get_fte(((uint8_t *) PHYS_BASE) - PGSIZE, PAL_USER | PAL_ZERO);
-    printf("KPAGE : %x\n", kpage);
+    // printf("KPAGE : %x\n", kpage);
+    ASSERT(kpage != NULL);
   }
   
   // kpage = palloc_get_page ();
@@ -632,6 +642,7 @@ setup_stack (void **esp, char *file_name)
   
 
   char * copy = malloc(strlen(file_name)+1);
+  ASSERT(copy != NULL);
   strlcpy (copy, file_name, strlen(file_name)+1);
 
 
@@ -684,9 +695,6 @@ setup_stack (void **esp, char *file_name)
   free(argv);
   free(copy);
 
-  printf("SETUP STACK COMPLETE\n");
-  hex_dump(*esp, *esp ,100, true);
-
   return success;
 }
 
@@ -694,15 +702,21 @@ void* stack_growth(uint32_t *esp)
 {
   uint32_t *kpage;
   uint32_t *resp = pg_round_down(esp);
+  // printf("stack growth\n");
 
   /* find a frame for one additional stack */
   kpage = frame_get_fte(resp, PAL_USER | PAL_ZERO);
 
   if(kpage == NULL)
   {
+    // printf("in stack_growth\n");
     FTE *fte = frame_fifo_fte();
+    // printf("STACK UADDR : %p\n", fte->uaddr);
     swap_out(fte->uaddr);
+
+    // printf("SWAP_OUT\n");
     kpage = frame_get_fte(resp, PAL_USER | PAL_ZERO);
+    ASSERT(kpage != NULL);
   }
 
   

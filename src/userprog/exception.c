@@ -147,14 +147,17 @@ page_fault (struct intr_frame *f)
      be assured of reading CR2 before it changed). */
   intr_enable ();
 
-
-  printf("fault_addr(%p)\n", fault_addr);
-
+  printf("%p", fault_addr);
+  // printf("fault_addr(%p) in TID(%d)\n", fault_addr, thread_current()->tid);
+  // printf("esp(%p) | eip(%p) | cs(%p)\n", f->esp, f->eip, f->cs);
+  // int i=0;
+  // for(; i<8; i++)
+  //   printf("test : %p\n", fault_addr+i*512);
 
   void *esp = NULL;
   if((f->error_code & PF_U) != 0) esp = f->esp;
   else esp = thread_current()->esp;
-  // printf("ESP : %x\n", esp);
+  // printf("ESP : %x\n", espn);
   /* check whether the case is stack growth */
   if(PHYS_BASE-STACK_MAX <= fault_addr 
     && PHYS_BASE > fault_addr 
@@ -162,7 +165,7 @@ page_fault (struct intr_frame *f)
       || fault_addr == f->esp - 4 
       || fault_addr == f->esp - 32))
   {
-    
+    // printf("exception.c stack growth\n");
     uint32_t *kpage;
     struct file *file = thread_current()->file;
     kpage = stack_growth(fault_addr);
@@ -175,11 +178,11 @@ page_fault (struct intr_frame *f)
 
   /* PJ2 consideration */
   if(fault_addr == NULL){
-    // printf("fault 2\n");
+    printf("fault 2\n");
     syscall_exit(-1);
   }
   if(is_kernel_vaddr(fault_addr)){
-    // printf("fault 3\n");
+    printf("fault 3\n");
     syscall_exit(-1); 
   }
 
@@ -187,25 +190,28 @@ page_fault (struct intr_frame *f)
   /* check whether the frame mapped to the page has swapped out */
   PTE* result = page_pte_lookup(pg_round_down(fault_addr));
   if(result == NULL) {
+    printf("fault 4\n");
     goto BA;
   }
 
   if( result->is_swapped_out )
   {
-    
+    // printf("exception.c eviction\n");
     uint32_t *temp;
-    printf("EVICTION OCCUR\n");
+    printf("E ");
+    // printf("EVICTION OCCUR\n");
     /* check whether there is no free frame */
     temp = palloc_get_page(PAL_USER | PAL_ZERO);
     if(temp == NULL)
     {
-      printf("!!!!!!!!!!!!!!!!1\n");
+      // printf("!!!!!!!!!!!!!!!!1\n");
       /* find some frame that occupies PM by eviction policy */
       FTE *fte = frame_fifo_fte();
 
       // printf("UADDR : %x\n", fte->uaddr);
       /* swap out the frame to disk and record it to swap table */ 
       swap_out(fte->uaddr);
+      // printf("SWAP_OUT\n");
     }
     if(temp !=NULL){
          palloc_free_page(temp);
@@ -220,12 +226,11 @@ BA:
   /* accessed address is not in pagedir */
   if(pagedir_get_page(thread_current()->pagedir, fault_addr) == NULL)
   {
-    // printf("fault 1\n");
+    printf("fault 1\n");
     syscall_exit(-1);
   }
-  // printf("entered eviction\n");
 
-  
+
   
   /* Count page faults. */
   page_fault_cnt++;

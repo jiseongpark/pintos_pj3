@@ -27,6 +27,7 @@ init (void)
   size_t i;
 
   msg ("init");
+  printf("BUF1 : %p BUF2 : %p, HISTO : %p\n", buf1, buf2, histogram);
 
   arc4_init (&arc4, "foobar", 6);
   arc4_crypt (&arc4, buf1, sizeof buf1);

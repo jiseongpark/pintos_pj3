@@ -27,7 +27,7 @@ static void syscall_handler (struct intr_frame *f UNUSED)
   int i = 0;
   thread_current()->esp = p;
   
-  // printf("SYSCALL : %x\n", p);
+  // printf("SYSCALL : %x by tid(%d)\n", *p, thread_current()->tid);
   
   if(pagedir_get_page(thread_current()->pagedir, f->esp)==NULL){
      // printf("11111111111111111111\n");
@@ -112,11 +112,8 @@ static void syscall_handler (struct intr_frame *f UNUSED)
         syscall_exit(-1);
      }
 
-   if(pagedir_get_page(thread_current()->pagedir, *(p+2))==NULL)
+     if(pagedir_get_page(thread_current()->pagedir, *(p+2))==NULL)
      {
-        // printf("P + 2 :%x\n", *(p+2));
-        // printf("ALIGN : %x\n", pg_round_down(*(p+2)));
-        // printf("STACK END : %x\n", thread_current()->stack_end);
         if(PHYS_BASE-STACK_MAX <= *(p+2) 
             && PHYS_BASE > *(p+2) 
             && (thread_current()->esp <= *(p+2) 
@@ -125,23 +122,11 @@ static void syscall_handler (struct intr_frame *f UNUSED)
         {
           stack_growth(*(p+2));
           stack_growth(*(p+2)+PGSIZE);
-          // *(p+2) = pg_round_down(*(p+2));
-          // printf("aligned p+2 : %x\n", *(p+2));
           goto N;  
         }
-        
-        // if(growth_condition(*(p+2), thread_current()->esp, f->esp))
-        // {
-        //   stack_growth(*(p+2));
-        //   break;
-        // }
-        // goto N;
-        
 
         f->eax=0;
-        // printf("999999999\n");
         syscall_exit(-1);
-        // break;
      }     
      N:  
      f->eax = syscall_read(*(p+1),*(p+2), *(p+3));
@@ -191,6 +176,7 @@ void syscall_exit(int status)
 
    printf("%s: ", thread_current()->name);
    printf("exit(%d)\n", status);
+   printf("--> exited tid %d\n", thread_current()->tid);
 
    thread_current()->exit_status = status;
 
@@ -205,6 +191,7 @@ int syscall_open(const char * file)
 
    int fd;
    struct file_info *new_file = malloc(sizeof(struct file_info));
+   ASSERT(new_file != NULL);
    
    if(file == NULL){
       free(new_file);
